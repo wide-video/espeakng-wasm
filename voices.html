@@ -1,0 +1,26 @@
+<script src="espeakng.js"></script>
+<script type="module">
+const module = await createESpeakNg();
+
+module._espeak_Initialize(0, 0, 0, 0);
+
+const listPtr = module._espeak_ListVoices();
+
+let offset = 0;
+while(true) {
+	const voicePtr = module.getValue(listPtr + offset, 'i32');
+	if (voicePtr === 0)
+		break;
+
+	const name = module.UTF8ToString(module.getValue(voicePtr, 'i32'));
+	const languages = module.UTF8ToString(module.getValue(voicePtr + 4, 'i32'));
+	const identifier = module.UTF8ToString(module.getValue(voicePtr + 8, 'i32'));
+	const gender = module.getValue(voicePtr + 12, 'i8');
+	const age = module.getValue(voicePtr + 13, 'i8');
+	const variant = module.getValue(voicePtr + 14, 'i8');
+
+	console.log({name, languages, identifier, gender, age, variant});
+	offset += 4;
+}
+
+</script>

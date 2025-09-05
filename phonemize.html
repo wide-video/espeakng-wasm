@@ -1,0 +1,37 @@
+<script src="espeakng.js"></script>
+<script type="module">
+const module = await createESpeakNg();
+
+module._espeak_Initialize(0, 0, 0, 0);
+
+function setVoice(voice) {
+	const voicePtr = module._malloc(module.lengthBytesUTF8(voice) + 1);
+	module.stringToUTF8(voice, voicePtr, module.lengthBytesUTF8(voice) + 1);
+	console.log(`_espeak_SetVoiceByName(${voice})`, module._espeak_SetVoiceByName(voicePtr));
+	module._free(voicePtr);
+}
+
+function phonemize(text) {
+	const t0 = performance.now();
+	const textPtr = module._malloc(module.lengthBytesUTF8(text) + 1);
+	module.stringToUTF8(text, textPtr, module.lengthBytesUTF8(text) + 1);
+
+	const textPtrPtr = module._malloc(4);
+	module.setValue(textPtrPtr, textPtr, 'i32');
+
+	const resultPtr = module._espeak_TextToPhonemes(textPtrPtr, 0, 3);
+	const result = module.UTF8ToString(resultPtr);
+
+	module._free(textPtr);
+	module._free(textPtrPtr);
+
+	console.log(performance.now() - t0)
+	return result;
+}
+
+setVoice("en");
+console.log(phonemize("hello world x"))
+
+setVoice("ja");
+console.log(phonemize("こんにちは"))
+</script>
