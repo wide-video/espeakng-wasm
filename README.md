@@ -24,7 +24,7 @@ sed -i -E 's/int\s+(iswalnum|iswalpha|iswblank|iswcntrl|iswgraph|iswlower|iswpri
 git clone --depth 1 https://github.com/espeak-ng/espeak-ng.git /wasm/modules/espeak-ng
 cd /wasm/modules/espeak-ng
 ./autogen.sh
-./configure --without-async --without-mbrola --without-sonic --without-pcaudiolib --without-klatt --without-speechplayer
+./configure --without-async --without-mbrola --without-sonic --without-pcaudiolib --without-klatt --without-speechplayer --with-extdict-cmn
 make
 
 cd /wasm/modules/espeak-ng/src/ucd-tools
@@ -38,10 +38,20 @@ emmake make clean
 emmake make
 
 cd /wasm/modules/espeak-ng
-emconfigure ./configure --without-async --without-mbrola --without-sonic --without-pcaudiolib --without-klatt --without-speechplayer
+emconfigure ./configure --without-async --without-mbrola --without-sonic --without-pcaudiolib --without-klatt --without-speechplayer --with-extdict-cmn
 emmake make clean
 emmake make src/espeak-ng
-emcc -O3 -s INVOKE_RUN=0 -s EXIT_RUNTIME=0 -s MODULARIZE=1 -s EXPORT_NAME='createESpeakNg' -s EXPORTED_FUNCTIONS='[_free, _malloc, _espeak_Initialize, _espeak_TextToPhonemes, _espeak_SetVoiceByName, _espeak_ListVoices]' -s EXPORTED_RUNTIME_METHODS='[lengthBytesUTF8, stringToUTF8, UTF8ToString, setValue, getValue, FS]' -s INITIAL_MEMORY=32MB -s STACK_SIZE=5MB -s DEFAULT_PTHREAD_STACK_SIZE=2MB src/.libs/libespeak-ng.so src/espeak-ng.o -o /wasm/espeakng.js --embed-file espeak-ng-data@/usr/local/share/espeak-ng-data/
+emcc -O3 -s INVOKE_RUN=0 -s EXIT_RUNTIME=0 -s MODULARIZE=1 -s EXPORT_NAME='createESpeakNg' -s EXPORTED_FUNCTIONS='[_free, _malloc, _espeak_Initialize, _espeak_TextToPhonemes, _espeak_SetVoiceByName, _espeak_ListVoices]' -s EXPORTED_RUNTIME_METHODS='[lengthBytesUTF8, stringToUTF8, UTF8ToString, setValue, getValue, FS]' -s INITIAL_MEMORY=64MB -s STACK_SIZE=5MB -s DEFAULT_PTHREAD_STACK_SIZE=2MB src/.libs/libespeak-ng.so src/espeak-ng.o -o /wasm/espeakng.js --embed-file espeak-ng-data@/usr/local/share/espeak-ng-data/
 ```
 
 Produces `espeakng.js` and `espeakng.wasm` in root.
+
+## Docker Reattach
+
+Reattach stdin for exited container:
+
+```shell
+docker ps -q -l              # find container ID (or discover via Docker desktop)
+docker start 42ba693c3e36    # restart in the background
+docker attach 42ba693c3e36   # reattach the terminal & stdin
+```

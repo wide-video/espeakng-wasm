@@ -1,3 +1,8 @@
+<!DOCTYPE html>
+<head>
+<meta charset="UTF-8">
+</head>
+<body>
 <script src="espeakng.js"></script>
 <script type="module">
 const module = await createESpeakNg();
@@ -7,31 +12,66 @@ module._espeak_Initialize(0, 0, 0, 0);
 function setVoice(voice) {
 	const voicePtr = module._malloc(module.lengthBytesUTF8(voice) + 1);
 	module.stringToUTF8(voice, voicePtr, module.lengthBytesUTF8(voice) + 1);
-	console.log(`_espeak_SetVoiceByName(${voice})`, module._espeak_SetVoiceByName(voicePtr));
+	const result = module._espeak_SetVoiceByName(voicePtr);
 	module._free(voicePtr);
+	return result;
 }
 
 function phonemize(text) {
-	const t0 = performance.now();
 	const textPtr = module._malloc(module.lengthBytesUTF8(text) + 1);
 	module.stringToUTF8(text, textPtr, module.lengthBytesUTF8(text) + 1);
 
 	const textPtrPtr = module._malloc(4);
 	module.setValue(textPtrPtr, textPtr, 'i32');
 
-	const resultPtr = module._espeak_TextToPhonemes(textPtrPtr, 0, 3);
-	const result = module.UTF8ToString(resultPtr);
+	let result = "";
+
+	while(true) {
+		const resultPtr = module._espeak_TextToPhonemes(textPtrPtr, 0, 3);
+		const phonemes = module.UTF8ToString(resultPtr);
+		if(!phonemes)
+			break;
+
+		result += phonemes;
+
+		const newPtr = module.getValue(textPtrPtr, '*');
+		const consumedBytes = newPtr - textPtr;
+		const consumedText = consumedBytes > 0 ? text.substring(0, consumedBytes - 1) : text;
+		const match = consumedText.match(/([.,?!;:])\s*$/)?.[1];
+		if(match)
+			result += match + " ";
+	}
 
 	module._free(textPtr);
 	module._free(textPtrPtr);
-
-	console.log(performance.now() - t0)
-	return result;
+	return result.trim();
 }
 
-setVoice("en");
-console.log(phonemize("hello world x"))
+// open: https://odo.lv/Espeak
+// via dev options change `Output` type:
+// document.forms[0].debug.options[0].value = "--ipa=3"
+// submit form and output goes as "expected"
+function test(expectedRaw, language, text) {
+	const expected = expectedRaw.replaceAll(String.fromCharCode(8205), "");
+	const setVoiceResult = setVoice(language);
+	const phonemizeResult = phonemize(text);
 
-setVoice("ja");
-console.log(phonemize("こんにちは"))
+	console.log(`--- TEST ---`)
+	console.log(setVoiceResult === 0 ? "OK" : `FAIL(${setVoiceResult})`, `setVoice(${language})`);
+	console.log(expected === phonemizeResult ? "OK" : "FAIL", `expected=${expected} result=${phonemizeResult}`);
+}
+
+// https://huggingface.co/hexgrad/Kokoro-82M/blob/main/VOICES.md
+
+test("nˈi2 tɕˈi5n nˈiɛɜn tˈuo5 tˈɑ5", "cmn", "你今年多大？") // zh
+test("həlˈə‍ʊ wˈɜːld", "en", "hello world"); // en-gb -> en
+test("həlˈo‍ʊ wˈɜːld", "en-us", "hello world");
+test("kwˈantos ˈaɲos tjˈene?", "es", "¿cuántos años tiene?");
+test("kɔmˌɑ̃ alˈevˈu?", "fr", "Comment allez-vous?"); // ff
+test("nəmˈʌsteː dˈʊnɪjˌaː", "hi", "नमस्ते दुनिया");
+test("kwˈantɪ ˈannɪ ˈaj?", "it", "Quanti anni hai?");
+test("kˌo̞nnit‍ɕˈihä", "ja", "こんにちは");
+test("kwˈɐ̃ŋtʊz ˈɐ̃nʊz vosˌe teɪŋ?", "pt-br", "quantos anos você tem?");
+
+
 </script>
